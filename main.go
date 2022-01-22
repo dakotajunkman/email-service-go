@@ -11,11 +11,19 @@ import (
 
 var db *sql.DB
 
+// define a game
+type Game struct {
+	id int
+	name string
+	year int
+	month int
+	day int
+}
+
 // runs automagically when the file is built and rain
 func main() {
 	config := buildDbConfig()
 	connectToDb(config)
-	updateDbRow("Valorant", 2022, 1, 19)
 }
 
 // returns env variable for local testing (will be commented out for deploy since
@@ -74,5 +82,21 @@ func updateDbRow(name string, year int, month int, day int) int64 {
 		panic(err.Error())
 	}
 
+	// not needed but go requires all variables to be used
 	return rows
 }
+
+func queryDbAndBuildGame(name string) Game {
+	var game Game
+	query := fmt.Sprintf("SELECT * FROM games WHERE name = '%s'", name)
+	row := db.QueryRow(query)
+
+	// map the columns to struct fields
+	err := row.Scan(&game.id, &game.name, &game.year, &game.month, &game.day)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return game
+} 
