@@ -11,13 +11,11 @@ import (
 
 var db *sql.DB
 
-// define a game
-type Game struct {
+// define a user
+type User struct {
 	id int
 	name string
-	year int
-	month int
-	day int
+	email string
 }
 
 // runs automagically when the file is built and rain
@@ -66,37 +64,37 @@ func connectToDb(config mysql.Config) {
 	fmt.Println("You connected boiiii")
 }
 
-// updates date in DB based on game name
-// could use game id as well
-func updateDbRow(name string, year int, month int, day int) int64 {
-	command := fmt.Sprintf("UPDATE games SET year = %d, month = %d, day = %d WHERE name = '%s';", year, month, day, name)
+// inserts new user into the DB
+func insertDbRow(name string, email string) int64 {
+	command := fmt.Sprintf("INSERT INTO users(name, email) VALUES('%s', '%s')", name, email)
 	res, err := db.Exec(command)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := res.RowsAffected()
+	id, err := res.LastInsertId()
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	// not needed but go requires all variables to be used
-	return rows
+	// returns id back to calling function so json can be assembled
+	return id
 }
 
-func queryDbAndBuildGame(name string) Game {
-	var game Game
-	query := fmt.Sprintf("SELECT * FROM games WHERE name = '%s'", name)
+// gets a user from the DB based on id and maps values to a user struct
+func queryDbAndBuildUser(id int) User {
+	var user User
+	query := fmt.Sprintf("SELECT * FROM users WHERE id = %d", id)
 	row := db.QueryRow(query)
 
 	// map the columns to struct fields
-	err := row.Scan(&game.id, &game.name, &game.year, &game.month, &game.day)
+	err := row.Scan(&user.id, &user.name, &user.email)
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	return game
+	return user
 } 
