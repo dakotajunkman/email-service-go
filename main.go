@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
+	"github.com/gorilla/mux"
 )
 
 var db *sql.DB
@@ -22,6 +25,7 @@ type User struct {
 func main() {
 	config := buildDbConfig()
 	connectToDb(config)
+	handleRequests()
 }
 
 // returns env variable for local testing (will be commented out for deploy since
@@ -97,4 +101,26 @@ func queryDbAndBuildUser(id int) User {
 	}
 
 	return user
-} 
+}
+
+func handleRequests() {
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/", homeGet)
+	log.Fatal(http.ListenAndServe(":6969", router))
+}
+
+func homeGet(writer http.ResponseWriter, req *http.Request) {
+	// build response
+	writer.WriteHeader(http.StatusOK)
+	writer.Header().Set("Content-Type", "application/json")
+	resp := make(map[string] string)
+	resp["message"] = "This does nothing"
+	jsonResp, err := json.Marshal(resp)
+
+	if err != nil {
+		log.Fatal("Could not make JSON in homeGet")
+	}
+
+	// write the JSON response
+	writer.Write(jsonResp)
+}
