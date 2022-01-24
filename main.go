@@ -1,30 +1,36 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 var db *sql.DB
 
-// define a user
+// define a user pulled from database (has Id)
 type User struct {
-	id int
-	name string
-	email string
+	Id int `json:"id"`
+	Name string `json:"name"`
+	Email string `json:"email"`
 }
 
 // runs automagically when the file is built and rain
 func main() {
 	config := buildDbConfig()
 	connectToDb(config)
+
+	// these are needed to make the DB stay connect
+	// no idea why
+	db.SetMaxIdleConns(0)
+	db.SetConnMaxLifetime(0)
 	handleRequests()
 }
 
@@ -94,7 +100,7 @@ func queryDbAndBuildUser(id int) User {
 	row := db.QueryRow(query)
 
 	// map the columns to struct fields
-	err := row.Scan(&user.id, &user.name, &user.email)
+	err := row.Scan(&user.Id, &user.Name, &user.Email)
 
 	if err != nil {
 		panic(err.Error())
@@ -106,9 +112,11 @@ func queryDbAndBuildUser(id int) User {
 func handleRequests() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeGet)
+	router.HandleFunc("/user", createUser).Methods("POST")
 	log.Fatal(http.ListenAndServe(":6969", router))
 }
 
+// returns some dumb JSON when the base URL is hit
 func homeGet(writer http.ResponseWriter, req *http.Request) {
 	// build response
 	writer.WriteHeader(http.StatusOK)
@@ -122,5 +130,29 @@ func homeGet(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	// write the JSON response
+	writer.Write(jsonResp)
+}
+
+// creates a user in the DB based on JSON body of the request
+func createUser(writer http.ResponseWriter, req *http.Request) {
+	reqBody, _ := ioutil.ReadAll(req.Body)
+	var user User
+
+	// take the JSON and map to the user struct
+	json.Unmarshal(reqBody, &user)
+
+	// insert in to the DB
+	id := insertDbRow(user.Name, user.Email)
+	user.Id = int(id)
+	
+	writer.WriteHeader(http.StatusCreated)
+	writer.Header().Set("Content-Type", "application/json")
+	jsonResp, err := json.Marshal(user)
+
+	if err != nil {
+		log.Fatal("Could not make JSON in createUser")
+	}
+
+	// send the response
 	writer.Write(jsonResp)
 }
