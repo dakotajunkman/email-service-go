@@ -11,6 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	// "github.com/sendgrid/sendgrid-go"
 )
 
 var db *sql.DB
