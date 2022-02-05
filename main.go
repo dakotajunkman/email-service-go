@@ -11,7 +11,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	// "github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 var db *sql.DB
@@ -21,6 +22,11 @@ type User struct {
 	Id int `json:"id"`
 	Name string `json:"name"`
 	Email string `json:"email"`
+}
+
+// define a request for an email based on ID
+type EmailReq struct {
+	Id int `json:"id"`
 }
 
 // runs automagically when the file is built and rain
@@ -114,6 +120,7 @@ func handleRequests() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeGet)
 	router.HandleFunc("/user", createUser).Methods("POST")
+	router.HandleFunc("/email", sendEmail).Methods("POST")
 	log.Fatal(http.ListenAndServe(":6969", router))
 }
 
@@ -156,4 +163,41 @@ func createUser(writer http.ResponseWriter, req *http.Request) {
 
 	// send the response
 	writer.Write(jsonResp)
+}
+
+func sendEmail(writer http.ResponseWriter, req *http.Request) {
+	reqBody, _ := ioutil.ReadAll(req.Body)
+
+	var id EmailReq
+
+	// map JSON to request ID
+	json.Unmarshal(reqBody, &id)
+
+	// get user from the database
+	user := queryDbAndBuildUser(id.Id)
+
+	if !buildandSendEmail(user) {
+		writer.WriteHeader(http.StatusInternalServerError)
+	} else {
+		writer.WriteHeader(http.StatusCreated)
+	}
+
+}
+
+func buildandSendEmail(user User) bool {
+	from := mail.NewEmail("Game Updates", "junkmand@oregonstate.edu")
+	to := mail.NewEmail(user.Name, user.Email)
+	subject := "This is Only a Test"
+	plainText := "It's working!"
+	client := sendgrid.NewSendClient(goDotEnvVariable("SendGridKey"))
+	message := mail.NewSingleEmail(from, subject, to, plainText, "")
+
+	_, err := client.Send(message)
+
+	if err != nil {
+		log.Fatal(err.Error())
+		return false
+	}
+
+	return true
 }
