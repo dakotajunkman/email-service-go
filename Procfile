@@ -1,1 +1,1 @@
-web: bin/email-service-go
+web: bin/main
