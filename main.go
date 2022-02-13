@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"log"
 	"net/http"
 	"github.com/go-sql-driver/mysql"
@@ -67,11 +68,11 @@ func main() {
 
 func buildDbConfig() mysql.Config {
 	return mysql.Config {
-		User: User,
-		Passwd: Password,
+		User: os.Getenv("User"),
+		Passwd: os.Getenv("Password"),
 		Net: "tcp",
-		Addr: Address,
-		DBName: DB,
+		Addr: os.Getenv("Address"),
+		DBName: os.Getenv("DB"),
 		AllowNativePasswords: true,
 	}
 }
@@ -131,7 +132,7 @@ func handleRequests() {
 	router.HandleFunc("/", homeGet)
 	router.HandleFunc("/user", createUser).Methods("POST")
 	router.HandleFunc("/email", sendEmail).Methods("POST")
-	log.Fatal(http.ListenAndServe(":6969", router))
+	log.Fatal(http.ListenAndServe(":" + os.Getenv("PORT"), router))
 }
 
 // returns some dumb JSON when the base URL is hit
@@ -199,7 +200,7 @@ func buildandSendEmail(user User, game string) bool {
 	to := mail.NewEmail(user.Name, user.Email)
 	subject := fmt.Sprintf("Patch Poro - %s has an update!", game)
 	plainText := fmt.Sprintf("Hi %s!\nWe found a new update for %s - log in to check it out. www.dummylink.com", user.Name, game)
-	client := sendgrid.NewSendClient(SendGridKey)
+	client := sendgrid.NewSendClient(os.Getenv("SendGridKey"))
 	message := mail.NewSingleEmail(from, subject, to, plainText, "")
 
 	_, err := client.Send(message)
