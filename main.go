@@ -10,7 +10,6 @@ import (
 	"os"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
@@ -27,6 +26,7 @@ type User struct {
 // define a request for an email based on ID
 type EmailReq struct {
 	Id int `json:"id"`
+	Game string `json:"game"`
 }
 
 // runs automagically when the file is built and rain
@@ -43,25 +43,36 @@ func main() {
 
 // returns env variable for local testing (will be commented out for deploy since
 // Heroku env variables will be used)
-func goDotEnvVariable(key string) string {
-	err := godotenv.Load(".env")
+// func goDotEnvVariable(key string) string {
+// 	err := godotenv.Load(".env")
 
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	return os.Getenv(key)
-}
+// 	return os.Getenv(key)
+// }
 
 // builds DB config (will be commented out for deploy)
 // same function using Heroku config vars will be built
+// func buildDbConfig() mysql.Config {
+// 	return mysql.Config{
+// 		User: goDotEnvVariable("User"),
+// 		Passwd: goDotEnvVariable("Password"),
+// 		Net: "tcp",
+// 		Addr: goDotEnvVariable("Address"),
+// 		DBName: goDotEnvVariable("DB"),
+// 		AllowNativePasswords: true,
+// 	}
+// }
+
 func buildDbConfig() mysql.Config {
-	return mysql.Config{
-		User: goDotEnvVariable("User"),
-		Passwd: goDotEnvVariable("Password"),
+	return mysql.Config {
+		User: User,
+		Passwd: Password,
 		Net: "tcp",
-		Addr: goDotEnvVariable("Address"),
-		DBName: goDotEnvVariable("DB"),
+		Addr: Address,
+		DBName: DB,
 		AllowNativePasswords: true,
 	}
 }
@@ -168,15 +179,15 @@ func createUser(writer http.ResponseWriter, req *http.Request) {
 func sendEmail(writer http.ResponseWriter, req *http.Request) {
 	reqBody, _ := ioutil.ReadAll(req.Body)
 
-	var id EmailReq
+	var emailRequest EmailReq
 
 	// map JSON to request ID
-	json.Unmarshal(reqBody, &id)
+	json.Unmarshal(reqBody, &emailRequest)
 
 	// get user from the database
-	user := queryDbAndBuildUser(id.Id)
+	user := queryDbAndBuildUser(emailRequest.Id)
 
-	if !buildandSendEmail(user) {
+	if !buildandSendEmail(user, emailRequest.Game) {
 		writer.WriteHeader(http.StatusInternalServerError)
 	} else {
 		writer.WriteHeader(http.StatusCreated)
@@ -184,12 +195,12 @@ func sendEmail(writer http.ResponseWriter, req *http.Request) {
 
 }
 
-func buildandSendEmail(user User) bool {
-	from := mail.NewEmail("Game Updates", "junkmand@oregonstate.edu")
+func buildandSendEmail(user User, game string) bool {
+	from := mail.NewEmail("Patch Poro", "junkmand@oregonstate.edu")
 	to := mail.NewEmail(user.Name, user.Email)
-	subject := "This is Only a Test"
-	plainText := "It's working!"
-	client := sendgrid.NewSendClient(goDotEnvVariable("SendGridKey"))
+	subject := fmt.Sprintf("Patch Poro - %s has an update!", game)
+	plainText := fmt.Sprintf("Hi %s!\nWe found a new update for %s - log in to check it out. www.dummylink.com", user.Name, game)
+	client := sendgrid.NewSendClient(SendGridKey)
 	message := mail.NewSingleEmail(from, subject, to, plainText, "")
 
 	_, err := client.Send(message)
