@@ -199,7 +199,7 @@ func buildandSendEmail(user User, game string) bool {
 	from := mail.NewEmail("Patch Poro", "junkmand@oregonstate.edu")
 	to := mail.NewEmail(user.Name, user.Email)
 	subject := fmt.Sprintf("Patch Poro - %s has an update!", game)
-	plainText := fmt.Sprintf("Hi %s!\nWe found a new update for %s - log in to check it out. https://patch-poro.herokuapp.com", user.Name, game)
+	plainText := fmt.Sprintf("Hi %s!\nWe found a new update for %s - log in to check it out. https://patch-poro.vercel.app/login", user.Name, game)
 	client := sendgrid.NewSendClient(os.Getenv("SendGridKey"))
 	message := mail.NewSingleEmail(from, subject, to, plainText, "")
 
